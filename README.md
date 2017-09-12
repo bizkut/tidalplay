@@ -1,5 +1,5 @@
 # tidalplay
-Tidal player for command line
+Tidal player for command line derived from [tidalbar](https://github.com/bsilvereagle/tidalbar)
 
 ## Dependencies
 Audacious (<http://audacious-media-player.org/>)  
