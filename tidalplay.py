@@ -5,34 +5,79 @@ import getpass
 from sys import exit
 from sys import argv
 from requests import HTTPError
-from subprocess import run, PIPE
+from subprocess import run, PIPE, STDOUT, Popen, TimeoutExpired, CalledProcessError
 from shlex import split
 from os.path import basename, dirname, exists
-from os import makedirs, remove
+from os import makedirs, remove, environ
 from xtermcolor import colorize
 from glob import glob
 import keyring as kr
-
+import numpy as np
+import json
 
 def patch__str__(self):
     return self.name
 setattr(tidalapi.models.Model, '__str__', patch__str__)
-tmp = "/tmp/TIDAL/"
 
-player = "pasuspender -- audacious -q -E --headless '%s'"
-player_new = "pasuspender -- audacious -q -E --headless"
-downloader = "ffmpeg -loglevel quiet -i '%s' -c copy '%s'"
-# http://www.sno.phy.queensu.ca/~phil/exiftool/TagNames/Vorbis.html
-download_cover = "curl -s -o %s/%s.jpg '%s'"
-metadata = 'metaflac --remove-all-tags --set-tag=ARTIST="%s" --set-tag=ALBUM="%s" --set-tag=TITLE="%s" --set-tag=DATE="%s" --import-picture-from="%s" "%s"'
-replaygain = "metaflac --add-replay-gain"
 
-if not exists(tmp):
-    makedirs(tmp)
-else:
-    objlist = glob(tmp + "*")
-    for f in objlist:
-        remove(f)
+headphones_sensitivity = 100 # db/V (AKG K 702)
+RH = 67.0 # headpones impedance, Ohm (AKG K 702)
+
+# RH = 23.0 # headpones impedance, Ohm (Sennheiser HD4.30)
+# headphones_sensitivity = 116 # db/V (Sennheiser HD4.30)
+
+# RH = 34.4 # headpones impedance, Ohm (AKG K 514)
+# headphones_sensitivity = 116.9  # db/V (AKG K 514)
+
+Vout = 1.052 # unloaded output voltage at 0 db gain, V (Dell XPS 13)
+RL = 9.7 # output impedance, Ohm (Dell XPS 13)
+
+# Vout = 1.98 # unloaded output voltage at 0 db gain, V (Sabaj DA3)
+# RL = 3.6 # output impedance, Ohm (Sabaj DA3)
+
+PCM_loudness_headroom = -4.0 # PCM loudness headroom, db
+
+Rtot = RL + RH
+VL = Vout * (RH / Rtot) # output voltage, when loaded, V
+SPL_max = headphones_sensitivity + 20. * np.log10(VL) # maximum loudness of the headphone at 0 db gain, db
+
+target_SPL = 75 # target integrated loudness, db
+target_SPL_relative = target_SPL - SPL_max # relative target loudness, db
+
+# bass_boost = 6.0 # db
+bass_boost = 0.0 # db
+bass_boost_frq = 700 # Hz
+
+# treble_boost = 6.0 # db
+treble_boost = 0.0 # db
+treble_boost_frq = 11000 # Hz
+
+AUDIODEV="hw:1"
+
+# environ['AUDIODRIVER']='alsa'
+# environ['AUDIODEV']='hw:1'
+
+ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout 1000000000 -i "%s" -metadata ARTIST="%s" -metadata ALBUM="%s" -metadata TITLE="%s" -metadata DATE="%s" -f wav in.wav'
+# sox_192 = "sox -t wav in.wav -t wav -b 16 out.wav gain -n -7 bass %+.2g %.0f treble %+.2g %.0f sinc -p 45 30 gain -n -4 rate -v -p 45 -b 85 192k gain -n -0.2" % (
+#     bass_boost, bass_boost_frq, treble_boost, treble_boost_frq)
+
+# sox_192 = "sox -t wav in.wav -t wav -b 16 out.wav gain -n -8 sinc -p 45 20 gain -n -8 rate -a -v -p 45 -b 95 192k gain -n -0.2"
+sox_192 = "sox -t wav in.wav -t wav -b 32 out.wav gain -n -8 rate -a -v -b 95 384k gain -n -0.2"
+# sox_192 = "sox -t wav in.wav -t wav -b 32 out.wav gain -n -8 rate -s -v -b 95 192k gain -n -0.2 dither -a"
+
+# ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i out.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
+ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i final.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
+
+# sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -7 bass %+.2g %.0f treble %+.2g %.0f sinc -p 45 30 gain -n -4 rate -v -p 45 -b 85 48k gain -n %+.2g" % (bass_boost, bass_boost_frq, treble_boost, treble_boost_frq, PCM_loudness_headroom)
+# sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -8 sinc -p 45 20 gain -n -8 rate -a -v -p 45 -b 95 48k gain -n %+.2g" % PCM_loudness_headroom
+# sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -8 rate -a -v -p 45 -b 95 48k gain -n %+.2g" % PCM_loudness_headroom
+sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n %+.2g rate -a -v -p 45 -b 85 48k" % PCM_loudness_headroom
+
+volume = "amixer -c 1 -- sset Headphone playback %ddb" # HW volume control (Dell XPS 13)
+# volume = "amixer -c 1 -- sset 'SABAJ DA3 v1.2 playback' %ddb" # HW volume control (Sabaj DA3)
+
+
+aplay = "pasuspender -- aplay -q -D %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % AUDIODEV
 
 session = tidalapi.Session()
 
@@ -87,6 +132,20 @@ def get_album(album, tracks):
         tracks.append(track)
 
 
+def get_artist_radio_tracks(artist, tracks):
+    if type(artist) is tidalapi.Artist:
+        artist_id = artist.id
+    else:
+        artist_id = artist
+
+    for track in session.get_artist_radio(artist_id):
+        tracks.append(track)
+
+def get_track_radio_tracks(track, tracks):
+    track_id = track
+    for track in session.get_track_radio(track_id):
+        tracks.append(track)
+
 def get_top_tracks(artist, tracks):
     if type(artist) is tidalapi.Artist:
         artist_id = artist.id
@@ -96,63 +155,73 @@ def get_top_tracks(artist, tracks):
     for track in session.get_artist_top_tracks(artist_id):
         tracks.append(track)
 
+def play_stream_v2(track):
+    try:
+        track_url = session.get_media_url(track.id)
+    except HTTPError:
+        return
 
-def play_track(track):
-    if session.get_media_url(track.id):
-        file_path = session.get_media_url(track.id)
-        # print(file_path)
-        if "flac" not in file_path:
-            return
-        command = split(player % file_path)
-        track_str = " \t" + track.artist.name + " / " + \
-            track.album.name + " / " + track.name
-        print(colorize("▶", ansi=46), track_str, end='\r')
+    track_str = " \t" + track.artist.name + " / " + \
+                track.album.name + " / " + track.name
+    print(colorize("▶", ansi=46), track_str, end='\t')
+
+    command = split(ffmpeg_download % (track_url, track.artist.name, track.album.name,
+                                track.name, track.album.release_date))
+    try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
-        print(track_str)
+    except (CalledProcessError, TimeoutExpired):
+        return
 
+    # command = split(sox_192)
+    # try:
+    #     run(command, check=True, stdin=PIPE, stdout=PIPE)
+    # except (CalledProcessError, TimeoutExpired):
+    #     pass
 
-def download_tracks():
-    for i, track in enumerate(tracks):
-        track_path = session.get_media_url(track.id)
-        if "flac" not in track_path:
-            continue
+    # command = split(ffmpeg_loudnorm_pass1)
+    # try:
+    #     p_loudnorm = run(command, check=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+    # except (CalledProcessError, TimeoutExpired):
+    #     pass
 
-        flac_name = tmp + str(i) + ".flac"
-        command = split(downloader % (track_path, flac_name))
+    command = split(sox_48)
+    try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
+    except (CalledProcessError, TimeoutExpired):
+        pass
 
-        # command = split(removemetadata % flac_name)
-        # run(command, check=True, stdin=PIPE, stdout=PIPE)
+    command = split(ffmpeg_loudnorm_pass1)
+    try:
+        p_loudnorm = run(command, check=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+    except (CalledProcessError, TimeoutExpired):
+        pass
 
-        coverart_url = track.album.image
-        command = split(download_cover % (tmp, str(i), coverart_url))
+    out = p_loudnorm.stdout.decode("utf-8").splitlines()[-12:]
+    out = "\n".join(out)
+    print(out)
+    loudnorm = json.loads(out)
+
+    gain = round(target_SPL_relative - float(loudnorm['input_i']))
+    if gain > 0.:
+        gain = 0.
+
+    command = split(volume % int(gain))
+    print("Loundess: %.3g db\tDynamic range: %.3g db\tGain: %.3g" % (float(loudnorm['input_i']), float(loudnorm['input_lra']), gain), end='\n')
+    try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
+    except (CalledProcessError, TimeoutExpired):
+        pass
 
-        command = split(metadata % (track.artist.name, track.album.name,
-                                    track.name, track.album.release_date,
-                                    (tmp + str(i) + ".jpg"), flac_name))
-        print(command)
+    command = split(aplay)
+    try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
+    except (CalledProcessError, TimeoutExpired):
+        pass
+
+    # print(track_str)
     return
 
-
-def add_replaygain():
-    command = split(replaygain)
-    for filename in glob(tmp + "*.flac"):
-        command.append(filename)
-    run(command, check=True, stdin=PIPE, stdout=PIPE)
-    return
-
-
-def play_tracks():
-    command = split(player_new)
-    for filename in glob(tmp + "*.flac"):
-        command.append(filename)
-    run(command, check=True, stdin=PIPE, stdout=PIPE)
-    return
-
-
-def get_tracks(id):
+def get_tracks(id=""):
     tracks = []
     if schema == "album":
         get_album(id, tracks)
@@ -162,24 +231,29 @@ def get_tracks(id):
         get_top_tracks(id, tracks)
     elif schema == "track":
         tracks.append(session.get_track(id))
+    elif schema == "":
+        tracks = session.user.favorites.tracks()
+    elif schema == "radio/artist":
+        get_artist_radio_tracks(id, tracks)
+    elif schema == "radio/track":
+        get_track_radio_tracks(id, tracks)
     return tracks
 
-try:
+if __name__ == '__main__':
 
-    play_id = argv[1]
-    schema = dirname(play_id)
-    id = basename(play_id)
+    if argv.__len__() > 1:
+        play_id = argv[1]
+        schema = dirname(play_id)
+        id = basename(play_id)
+        tracks = get_tracks(id)
+        for i in range(tracks.__len__()):
+            ts = get_tracks(id)
+            play_stream_v2(ts[i])
+    else:
+        schema = ""
+        tracks = get_tracks()
+        while True:
+            i = np.random.choice(tracks.__len__(), 1, replace=False)
+            ts = get_tracks()
+            play_stream_v2(ts[i[0]])
 
-    # download_tracks()
-    # add_replaygain()
-    # play_tracks()
-
-    tracks = get_tracks(id)
-    for i in range(tracks.__len__()):
-        ts = get_tracks(id)
-        play_track(ts[i])
-
-except Exception as e:
-    print(e)
-    import traceback
-    traceback.print_exc()
