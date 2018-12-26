@@ -19,9 +19,52 @@ def patch__str__(self):
     return self.name
 setattr(tidalapi.models.Model, '__str__', patch__str__)
 
+class Source:
+    Vout = 0.0 # V
+    Rl = 0.0 # Ohm
+    SampleRate = int(0) # kHz
+    SampleFormat = "" # ALSA Format String
 
-headphones_sensitivity = 100 # db/V (AKG K 702)
-RH = 67.0 # headpones impedance, Ohm (AKG K 702)
+    def __init__(self, Vout, Rl, SampleRate, SampleFormat):
+        self.Vout = Vout
+        self.Rl = Rl
+        self.SampleRate = SampleRate
+        self.SampleFormat = SampleFormat
+
+class Sink:
+    R = 0.0 # Ohm 
+    Sensitivity = 0.0 # db / V
+
+    def __init__(self, R, Sensitivity):
+        self.R = R
+        self.Sensitivity = Sensitivity
+
+
+Sources = {"Dell XPS 13 (9343)": 
+            Source(Vout=1.052, Rl=9.7, SampleRate=48, SampleFormat="S32_LE"),
+            "Sabaj DA3":
+            Source(Vout=1.98, Rl=3.6, SampleRate=192, SampleFormat="S32_LE"),
+            "Dell XPS 15 (L502x)":
+            Source(Vout=1.052, Rl=1.0, SampleRate=192, SampleFormat="S32_LE"),
+            }
+
+Sinks = {"AKG K702":
+            Sink(R=67.0, Sensitivity=100.0),
+         "Sennheiser HD4.30":
+            Sink(R=23.0, Sensitivity=116.0),
+         "AKG K514":
+            Sink(R=34.4, Sensitivity=116.9)
+        }
+
+
+CARD = int(0)
+AUDIODEV = "hw:%d,0" % CARD
+
+MySource = Sources["Dell XPS 15 (L502x)"]
+MySink = Sinks["AKG K514"]
+
+# headphones_sensitivity = 100 # db/V (AKG K 702)
+# RH = 67.0 # headpones impedance, Ohm (AKG K 702)
 
 # RH = 23.0 # headpones impedance, Ohm (Sennheiser HD4.30)
 # headphones_sensitivity = 116 # db/V (Sennheiser HD4.30)
@@ -29,19 +72,24 @@ RH = 67.0 # headpones impedance, Ohm (AKG K 702)
 # RH = 34.4 # headpones impedance, Ohm (AKG K 514)
 # headphones_sensitivity = 116.9  # db/V (AKG K 514)
 
-Vout = 1.052 # unloaded output voltage at 0 db gain, V (Dell XPS 13)
-RL = 9.7 # output impedance, Ohm (Dell XPS 13)
+# Vout = 1.052 # unloaded output voltage at 0 db gain, V (Dell XPS 13)
+# RL = 9.7 # output impedance, Ohm (Dell XPS 13)
 
 # Vout = 1.98 # unloaded output voltage at 0 db gain, V (Sabaj DA3)
 # RL = 3.6 # output impedance, Ohm (Sabaj DA3)
 
+headphones_sensitivity = MySink.Sensitivity
+RH = MySink.R
+Vout = MySource.Vout
+RL = MySource.Rl
+
 PCM_loudness_headroom = -4.0 # PCM loudness headroom, db
+target_SPL = 75 # target integrated loudness, db
 
 Rtot = RL + RH
 VL = Vout * (RH / Rtot) # output voltage, when loaded, V
 SPL_max = headphones_sensitivity + 20. * np.log10(VL) # maximum loudness of the headphone at 0 db gain, db
 
-target_SPL = 75 # target integrated loudness, db
 target_SPL_relative = target_SPL - SPL_max # relative target loudness, db
 
 # bass_boost = 6.0 # db
@@ -52,12 +100,13 @@ bass_boost_frq = 700 # Hz
 treble_boost = 0.0 # db
 treble_boost_frq = 11000 # Hz
 
-AUDIODEV="hw:1"
+AUDIODEV="hw:0,0"
 
 # environ['AUDIODRIVER']='alsa'
 # environ['AUDIODEV']='hw:1'
 
-ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout 1000000000 -i "%s" -metadata ARTIST="%s" -metadata ALBUM="%s" -metadata TITLE="%s" -metadata DATE="%s" -f wav in.wav'
+# ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout 1000000000 -i "%s" -metadata ARTIST="%s" -metadata ALBUM="%s" -metadata TITLE="%s" -metadata DATE="%s" -f wav in.wav'
+ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout 1000000000 -i "%s" -c:a copy in.flac'
 # sox_192 = "sox -t wav in.wav -t wav -b 16 out.wav gain -n -7 bass %+.2g %.0f treble %+.2g %.0f sinc -p 45 30 gain -n -4 rate -v -p 45 -b 85 192k gain -n -0.2" % (
 #     bass_boost, bass_boost_frq, treble_boost, treble_boost_frq)
 
@@ -71,13 +120,13 @@ ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i final.wav -af loudnorm=I=-24:
 # sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -7 bass %+.2g %.0f treble %+.2g %.0f sinc -p 45 30 gain -n -4 rate -v -p 45 -b 85 48k gain -n %+.2g" % (bass_boost, bass_boost_frq, treble_boost, treble_boost_frq, PCM_loudness_headroom)
 # sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -8 sinc -p 45 20 gain -n -8 rate -a -v -p 45 -b 95 48k gain -n %+.2g" % PCM_loudness_headroom
 # sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -8 rate -a -v -p 45 -b 95 48k gain -n %+.2g" % PCM_loudness_headroom
-sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n %+.2g rate -a -v -p 45 -b 85 48k" % PCM_loudness_headroom
+sox_48 = "sox in.flac -t wav -b 32 final.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk" % (PCM_loudness_headroom, MySource.SampleRate)
 
-volume = "amixer -c 1 -- sset Headphone playback %ddb" # HW volume control (Dell XPS 13)
+volume = "amixer -c %d -- sset Headphone playback %ddb" # HW volume control (Dell XPS 13)
 # volume = "amixer -c 1 -- sset 'SABAJ DA3 v1.2 playback' %ddb" # HW volume control (Sabaj DA3)
 
 
-aplay = "pasuspender -- aplay -q -D %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % AUDIODEV
+aplay = "pasuspender -- aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (AUDIODEV, MySource.SampleFormat)
 
 session = tidalapi.Session()
 
@@ -165,8 +214,7 @@ def play_stream_v2(track):
                 track.album.name + " / " + track.name
     print(colorize("▶", ansi=46), track_str, end='\t')
 
-    command = split(ffmpeg_download % (track_url, track.artist.name, track.album.name,
-                                track.name, track.album.release_date))
+    command = split(ffmpeg_download % (track_url))
     try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
     except (CalledProcessError, TimeoutExpired):
@@ -205,7 +253,7 @@ def play_stream_v2(track):
     if gain > 0.:
         gain = 0.
 
-    command = split(volume % int(gain))
+    command = split(volume % (CARD, int(gain)))
     print("Loundess: %.3g db\tDynamic range: %.3g db\tGain: %.3g" % (float(loudnorm['input_i']), float(loudnorm['input_lra']), gain), end='\n')
     try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
