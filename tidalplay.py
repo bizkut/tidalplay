@@ -24,12 +24,13 @@ class Source:
     Rl = 0.0 # Ohm
     SampleRate = int(0) # kHz
     SampleFormat = "" # ALSA Format String
-
-    def __init__(self, Vout, Rl, SampleRate, SampleFormat):
+    VolumeControl = ""
+    def __init__(self, Vout, Rl, SampleRate, SampleFormat, VolumeControl):
         self.Vout = Vout
         self.Rl = Rl
         self.SampleRate = SampleRate
         self.SampleFormat = SampleFormat
+        self.VolumeControl = VolumeControl
 
 class Sink:
     R = 0.0 # Ohm 
@@ -41,11 +42,11 @@ class Sink:
 
 
 Sources = {"Dell XPS 13 (9343)": 
-            Source(Vout=1.052, Rl=9.7, SampleRate=48, SampleFormat="S32_LE"),
+            Source(Vout=1.052, Rl=9.7, SampleRate=48, SampleFormat="S32_LE", VolumeControl="PCM"),
             "Sabaj DA3":
-            Source(Vout=1.98, Rl=3.6, SampleRate=192, SampleFormat="S32_LE"),
+            Source(Vout=1.98, Rl=3.6, SampleRate=192, SampleFormat="S32_LE", VolumeControl="PCM"),
             "Dell XPS 15 (L502x)":
-            Source(Vout=1.052, Rl=1.0, SampleRate=192, SampleFormat="S32_LE"),
+            Source(Vout=1.052, Rl=1.0, SampleRate=192, SampleFormat="S32_LE", VolumeControl="Master"),
             }
 
 Sinks = {"AKG K702":
@@ -98,7 +99,7 @@ ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i final.wav -af loudnorm=I=-24:
 
 sox_48 = "sox in.flac -t wav -b 32 final.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk" % (PCM_loudness_headroom, MySource.SampleRate)
 
-volume = "amixer -c %d -- sset Headphone playback %ddb"
+volume = "amixer -c %d -- sset %s playback %ddb"
 
 aplay = "pasuspender -- aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (AUDIODEV, MySource.SampleFormat)
 
@@ -227,7 +228,7 @@ def play_stream_v2(track):
     if gain > 0.:
         gain = 0.
 
-    command = split(volume % (CARD, int(gain)))
+    command = split(volume % (CARD, MySource.VolumeControl, int(gain)))
     print("Loundess: %.3g db\tDynamic range: %.3g db\tGain: %.3g" % (float(loudnorm['input_i']), float(loudnorm['input_lra']), gain), end='\n')
     try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
