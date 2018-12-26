@@ -14,6 +14,7 @@ from glob import glob
 import keyring as kr
 import numpy as np
 import json
+import re
 
 def patch__str__(self):
     return self.name
@@ -23,6 +24,7 @@ class Source:
     Vout = 0.0 # V
     Rl = 0.0 # Ohm
     SampleRate = int(0) # kHz
+    SampleBits = int(0)
     SampleFormat = "" # ALSA Format String
     VolumeControl = ""
     def __init__(self, Vout, Rl, SampleRate, SampleFormat, VolumeControl):
@@ -31,6 +33,7 @@ class Source:
         self.SampleRate = SampleRate
         self.SampleFormat = SampleFormat
         self.VolumeControl = VolumeControl
+        self.SampleBits = int(re.findall('^S(\d+)_*?', SampleFormat)[0])
 
 class Sink:
     R = 0.0 # Ohm 
@@ -47,6 +50,8 @@ Sources = {"Dell XPS 13 (9343)":
             Source(Vout=1.98, Rl=3.6, SampleRate=192, SampleFormat="S32_LE", VolumeControl="PCM"),
             "Dell XPS 15 (L502x)":
             Source(Vout=1.052, Rl=1.0, SampleRate=192, SampleFormat="S32_LE", VolumeControl="Master"),
+            "Apple USB-C to 3.5mm Headphone Adapter":
+            Source(Vout=1.039, Rl=0.9, SampleRate=48, SampleFormat="S24_3LE", VolumeControl="PCM")
             }
 
 Sinks = {"AKG K702":
@@ -58,10 +63,10 @@ Sinks = {"AKG K702":
         }
 
 
-CARD = int(0)
+CARD = int(1)
 AUDIODEV = "hw:%d,0" % CARD
 
-MySource = Sources["Dell XPS 15 (L502x)"]
+MySource = Sources["Apple USB-C to 3.5mm Headphone Adapter"]
 MySink = Sinks["AKG K514"]
 
 # headphones_sensitivity = 100 # db/V (AKG K 702)
@@ -97,7 +102,7 @@ ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout
 
 ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i final.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
 
-sox_48 = "sox in.flac -t wav -b 32 final.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk" % (PCM_loudness_headroom, MySource.SampleRate)
+sox_48 = "sox in.flac -t wav -b %d final.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk" % (MySource.SampleBits, PCM_loudness_headroom, MySource.SampleRate)
 
 volume = "amixer -c %d -- sset %s playback %ddb"
 
