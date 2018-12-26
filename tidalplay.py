@@ -92,39 +92,13 @@ SPL_max = headphones_sensitivity + 20. * np.log10(VL) # maximum loudness of the 
 
 target_SPL_relative = target_SPL - SPL_max # relative target loudness, db
 
-# bass_boost = 6.0 # db
-bass_boost = 0.0 # db
-bass_boost_frq = 700 # Hz
-
-# treble_boost = 6.0 # db
-treble_boost = 0.0 # db
-treble_boost_frq = 11000 # Hz
-
-AUDIODEV="hw:0,0"
-
-# environ['AUDIODRIVER']='alsa'
-# environ['AUDIODEV']='hw:1'
-
-# ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout 1000000000 -i "%s" -metadata ARTIST="%s" -metadata ALBUM="%s" -metadata TITLE="%s" -metadata DATE="%s" -f wav in.wav'
 ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout 1000000000 -i "%s" -c:a copy in.flac'
-# sox_192 = "sox -t wav in.wav -t wav -b 16 out.wav gain -n -7 bass %+.2g %.0f treble %+.2g %.0f sinc -p 45 30 gain -n -4 rate -v -p 45 -b 85 192k gain -n -0.2" % (
-#     bass_boost, bass_boost_frq, treble_boost, treble_boost_frq)
 
-# sox_192 = "sox -t wav in.wav -t wav -b 16 out.wav gain -n -8 sinc -p 45 20 gain -n -8 rate -a -v -p 45 -b 95 192k gain -n -0.2"
-sox_192 = "sox -t wav in.wav -t wav -b 32 out.wav gain -n -8 rate -a -v -b 95 384k gain -n -0.2"
-# sox_192 = "sox -t wav in.wav -t wav -b 32 out.wav gain -n -8 rate -s -v -b 95 192k gain -n -0.2 dither -a"
-
-# ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i out.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
 ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i final.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
 
-# sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -7 bass %+.2g %.0f treble %+.2g %.0f sinc -p 45 30 gain -n -4 rate -v -p 45 -b 85 48k gain -n %+.2g" % (bass_boost, bass_boost_frq, treble_boost, treble_boost_frq, PCM_loudness_headroom)
-# sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -8 sinc -p 45 20 gain -n -8 rate -a -v -p 45 -b 95 48k gain -n %+.2g" % PCM_loudness_headroom
-# sox_48 = "sox -t wav in.wav -t wav -b 32 final.wav gain -n -8 rate -a -v -p 45 -b 95 48k gain -n %+.2g" % PCM_loudness_headroom
 sox_48 = "sox in.flac -t wav -b 32 final.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk" % (PCM_loudness_headroom, MySource.SampleRate)
 
-volume = "amixer -c %d -- sset Headphone playback %ddb" # HW volume control (Dell XPS 13)
-# volume = "amixer -c 1 -- sset 'SABAJ DA3 v1.2 playback' %ddb" # HW volume control (Sabaj DA3)
-
+volume = "amixer -c %d -- sset Headphone playback %ddb"
 
 aplay = "pasuspender -- aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (AUDIODEV, MySource.SampleFormat)
 
