@@ -11,7 +11,7 @@ from os.path import basename, dirname, exists
 from os import makedirs, remove, environ
 from xtermcolor import colorize
 from glob import glob
-import keyring as kr
+from keyrings.cryptfile.cryptfile import CryptFileKeyring
 import numpy as np
 import json
 import re
@@ -113,7 +113,7 @@ session = tidalapi.Session()
 login_attempts = 0
 allowed_attempts = 3
 while login_attempts < allowed_attempts:
-    kr.get_keyring()
+    kr = CryptFileKeyring()
     username = input('TIDAL username: ')
     password = kr.get_password("tidalplay", username)
     if password is None:
