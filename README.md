@@ -15,18 +15,21 @@ The main idea of this project is to stream music from Tidal with target loudness
 
 ```mermaid
 graph LR
-    A(Download Track) --> B(Resample To<br/>Maximum Sample Rate <br/>and Bit Depth);
-    B-->C(Estimate Loudness);
-    C-->D(Ajust<br/>Hardware Volume Control);
-    D-->E(Play);
+    A(Download Track)-->B(Apply -8 db Gain<br/>To Avoid Intersample Overloading);
+    B-->C(Resample To<br/>Maximum Sample Rate);
+    C-->D(Apply PCM headroom<br/>To Avoid DAC Overloading);
+    D-->E(Convert To<br/>The Maximum Bit Depth)
+    E-->F(Estimate Loudness);
+    F-->G(Ajust Hardware Volume Control<br/>To Achieve Target Loudness);
+    G-->I(Play);
 ```
 
 ## Dependencies
-keyring (<https://github.com/jaraco/keyring>)<br/>
-pasuspender (part of pulseaudio-utils)<br/>
-aplay, amixer (part of alsa-utils)<br/>
-ffmpeg(<https://www.ffmpeg.org/)<br/>
-sox(<http://sox.sourceforge.net/>)<br/>
+keyring (<https://github.com/jaraco/keyring>) with cryptfile backend(<https://github.com/frispete/keyrings.cryptfile>) 
+pasuspender (part of pulseaudio-utils)
+aplay, amixer (part of alsa-utils)
+ffmpeg (<https://www.ffmpeg.org/)
+sox (<http://sox.sourceforge.net/>)
 
 ## Usage
 1. Adjust MySink, MySource, CARD and target_SPL variables in `tidalplay.py` to match your playback setup and target loundess, respectively.
