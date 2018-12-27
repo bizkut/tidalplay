@@ -23,13 +23,40 @@ graph LR
     F-->G(Ajust Hardware Volume Control<br/>To Achieve Target Loudness);
     G-->I(Play);
 ```
+## Defaults
+- 75 db target loudness to avoid hearing damage. Please note that some headphones does not give "flat" frequency response at such SPL. For instance, AKG K702 are optimized for 80-85 db. So some SPL-dependent equalization is desirable and will be implemented later.
+- To avoid [ringing](https://en.wikipedia.org/wiki/Ringing_artifacts) in poorly mastered music, the (sox) upsampling uses slow rolloff slighly apodizing low-pass filter with 85% bandwidth, based on [archimago](https://archimago.blogspot.com/2018/01/musings-more-fun-with-digital-filters.html) measurements. 
+- 4 db PCM headroom to avoid DAC overloading due to the internal resampling, dithering, filtering, etc, see [Benchmark®](https://benchmarkmedia.com/blogs/application_notes/intersample-overs-in-cd-recordings) and [archimago](https://archimago.blogspot.com/2018/09/musings-measurements-look-at-dacs.html) articles for clarification.
+
+## Hardware support
+
+<details>
+<summary>Sources</summary>
+
++ Dell XPS 13 (9343)
++ Dell XPS 15 (L502x)
++ Sabaj DA3
++ Apple USB-C to Headphone adapter
+   
+</details>
+
+<details>
+<summary>Sinks</summary>
+
++ AKG K514
++ AKG K702
++ Sennheiser HD4.30
+   
+</details>
+
+Feel free to provide corresponding parameters of any other Sources/Sinks.
 
 ## Dependencies
-keyring (<https://github.com/jaraco/keyring>) with cryptfile backend(<https://github.com/frispete/keyrings.cryptfile>) 
-pasuspender (part of pulseaudio-utils)
-aplay, amixer (part of alsa-utils)
-ffmpeg (<https://www.ffmpeg.org/)
-sox (<http://sox.sourceforge.net/>)
+- keyring (<https://github.com/jaraco/keyring>) with cryptfile backend(<https://github.com/frispete/keyrings.cryptfile>) 
+- pasuspender (part of pulseaudio-utils)
+- aplay, amixer (part of alsa-utils)
+- ffmpeg (<https://www.ffmpeg.org/)
+- sox (<http://sox.sourceforge.net/>)
 
 ## Usage
 1. Adjust MySink, MySource, CARD and target_SPL variables in `tidalplay.py` to match your playback setup and target loundess, respectively.
