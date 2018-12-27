@@ -67,6 +67,6 @@ Feel free to provide corresponding parameters of any other Sources/Sinks.
 `./tidalplay.py artist/7144334` or  
 `./tidalplay.py album/33376720` or  
 `./tidalplay.py track/60815627` or
-`./tidalplay.py`
+`./tidalplay.py` to shuffle your favorite tracks.
 
 
