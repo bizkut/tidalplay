@@ -89,6 +89,7 @@ RH = MySink.R
 Vout = MySource.Vout
 RL = MySource.Rl
 
+OVERLOAD_PROTECTION = -8.0  # Intersample overload protection headroom, db
 PCM_loudness_headroom = -4.0 # PCM loudness headroom, db
 target_SPL = 75 # target integrated loudness, db
 
@@ -102,7 +103,8 @@ ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout
 
 ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i final.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
 
-sox_48 = "sox in.flac -t wav -b %d final.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk" % (MySource.SampleBits, PCM_loudness_headroom, MySource.SampleRate)
+sox_48 = "sox in.flac -t wav -b %d final.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk gain -n %+.2g" % (
+    MySource.SampleBits, OVERLOAD_PROTECTION, MySource.SampleRate, PCM_loudness_headroom)
 
 volume = "amixer -c %d -- sset %s playback %ddb"
 
