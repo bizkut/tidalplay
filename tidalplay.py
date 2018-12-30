@@ -101,12 +101,13 @@ target_SPL_relative = target_SPL - SPL_max # relative target loudness, db
 
 ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout 1000000000 -i "%s" -c:a copy in.flac'
 
-ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i final.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
+ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i temp.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
 
-sox_48 = "sox in.flac -t wav -b %d final.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk gain -n %+.2g" % (
-    MySource.SampleBits, OVERLOAD_PROTECTION, MySource.SampleRate, PCM_loudness_headroom)
+sox_48 = "sox in.flac -t wav -b 32 temp.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk gain -n %+.2g" % (
+            OVERLOAD_PROTECTION, MySource.SampleRate, PCM_loudness_headroom)
 
 volume = "amixer -c %d -- sset %s playback %ddb"
+softvolume = "sox temp.wav -t wav -b %d final.wav gain %+.2g"
 
 aplay = "pasuspender -- aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (AUDIODEV, MySource.SampleFormat)
 
@@ -235,12 +236,22 @@ def play_stream_v2(track):
     if gain > 0.:
         gain = 0.
 
-    command = split(volume % (CARD, MySource.VolumeControl, int(gain)))
     print("Loundess: %.3g db\tDynamic range: %.3g db\tGain: %.3g" % (float(loudnorm['input_i']), float(loudnorm['input_lra']), gain), end='\n')
+
+    if MySource.VolumeControl != "Software":
+        command = split(volume % (CARD, MySource.VolumeControl, int(gain)))
+        try:
+            run(command, check=True, stdin=PIPE, stdout=PIPE)
+        except (CalledProcessError, TimeoutExpired):
+            pass
+        gain = int(0)
+    
+    command = split(softvolume % (MySource.SampleBits, gain))
     try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
     except (CalledProcessError, TimeoutExpired):
         pass
+
 
     command = split(aplay)
     try:
