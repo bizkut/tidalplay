@@ -67,7 +67,7 @@ CARD = int(1)
 AUDIODEV = "hw:%d,0" % CARD
 
 MySource = Sources["Apple USB-C to 3.5mm Headphone Adapter"]
-MySink = Sinks["AKG K514"]
+MySink = Sinks["AKG K702"]
 
 # headphones_sensitivity = 100 # db/V (AKG K 702)
 # RH = 67.0 # headpones impedance, Ohm (AKG K 702)
@@ -192,7 +192,8 @@ def play_stream_v2(track):
         track_url = session.get_media_url(track.id)
     except HTTPError:
         return
-
+    print(track_url)
+    
     track_str = " \t" + track.artist.name + " / " + \
                 track.album.name + " / " + track.name
     print(colorize("▶", ansi=46), track_str, end='\t')
