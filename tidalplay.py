@@ -15,6 +15,7 @@ from keyrings.cryptfile.cryptfile import CryptFileKeyring
 import numpy as np
 import json
 import re
+import urllib
 
 def patch__str__(self):
     return self.name
@@ -99,11 +100,9 @@ SPL_max = headphones_sensitivity + 20. * np.log10(VL) # maximum loudness of the 
 
 target_SPL_relative = target_SPL - SPL_max # relative target loudness, db
 
-ffmpeg_download = 'ffmpeg -y -loglevel quiet -timeout 1000000000 -listen_timeout 1000000000 -i "%s" -c:a copy in.flac'
-
 ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i temp.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
 
-sox_48 = "sox in.flac -t wav -b 32 temp.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk gain -n %+.2g" % (
+sox_48 = "sox in -t wav -b 32 temp.wav gain -n %+.2g rate -a -v -p 45 -b 85 %dk gain -n %+.2g" % (
             OVERLOAD_PROTECTION, MySource.SampleRate, PCM_loudness_headroom)
 
 volume = "amixer -c %d -- sset %s playback %ddb"
@@ -198,10 +197,11 @@ def play_stream_v2(track):
                 track.album.name + " / " + track.name
     print(colorize("▶", ansi=46), track_str, end='\t')
 
-    command = split(ffmpeg_download % (track_url))
     try:
-        run(command, check=True, stdin=PIPE, stdout=PIPE)
-    except (CalledProcessError, TimeoutExpired):
+        res = urllib.request.urlopen(track_url)
+        filetype = res.info().get_content_type().split("/")[1]
+        urllib.request.urlretrieve(track_url, "in")
+    except (HTTPError, TimeoutExpired, IOError):
         return
 
     # command = split(sox_192)
