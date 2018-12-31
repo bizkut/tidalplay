@@ -204,18 +204,6 @@ def play_stream_v2(track):
     except (HTTPError, TimeoutExpired, IOError):
         return
 
-    # command = split(sox_192)
-    # try:
-    #     run(command, check=True, stdin=PIPE, stdout=PIPE)
-    # except (CalledProcessError, TimeoutExpired):
-    #     pass
-
-    # command = split(ffmpeg_loudnorm_pass1)
-    # try:
-    #     p_loudnorm = run(command, check=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-    # except (CalledProcessError, TimeoutExpired):
-    #     pass
-
     command = split(sox_48)
     try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
