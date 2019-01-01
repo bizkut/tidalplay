@@ -200,6 +200,9 @@ def play_stream_v2(track):
     try:
         res = urllib.request.urlopen(track_url)
         filetype = res.info().get_content_type().split("/")[1]
+        if filetype == 'mp4':
+            print("No AAC support at the moment.")
+            return
         urllib.request.urlretrieve(track_url, "in")
     except (HTTPError, TimeoutExpired, IOError):
         return
