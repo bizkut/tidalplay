@@ -16,7 +16,7 @@ import numpy as np
 import json
 import re
 import urllib
-
+from shutil import which
 
 class Source:
     Vout = 0.0  # V
@@ -117,10 +117,22 @@ sox_48 = "sox in -t wav -e float -b 32 temp.wav gain -n %+.2g rate -a -Q 7 -d 33
 volume = "amixer -c %d -- sset %s playback %ddb"
 softvolume = "sox temp.wav -t wav -b %d final.wav gain %+.2g"
 
+HASMQA = (which('mqadec') is not None) and (which('mqarender') is not None)
+if HASMQA is True:
+    print("MQA decoding is possible.")
 mqadec = "mqadec in in.wav"
 
-aplay = "pasuspender -- aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (
+pasuspender = "pasuspender -- "
+HASPA = which('pasuspender') is not None
+
+aplay = "aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (
     AUDIODEV, MySource.SampleFormat)
+if HASPA is True:
+    print("Using pasuspender to bypass pulseaudio.")
+    aplay = pasuspender + aplay
+
+
+HASMQA = (which('mqadec') is not None) and (which('mqarender') is not None)
 
 session = tidalapi.Session()
 
@@ -221,7 +233,7 @@ def play_stream_v2(track):
     except (HTTPError, TimeoutExpired, IOError):
         return
 
-    if track.quality == tidalapi.models.Quality.hi_res:
+    if track.quality == tidalapi.models.Quality.hi_res and HASMQA is True:
         print("Decoding MQA")
         command = split(mqadec)
         try:
