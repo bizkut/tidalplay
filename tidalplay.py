@@ -112,6 +112,8 @@ sox_48 = "sox in -t wav -e float -b 32 temp.wav gain -n %+.2g rate -a -Q 7 -d 33
 volume = "amixer -c %d -- sset %s playback %ddb"
 softvolume = "sox temp.wav -t wav -b %d final.wav gain %+.2g"
 
+mqadec = "mqadec in in.wav"
+
 aplay = "pasuspender -- aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (
     AUDIODEV, MySource.SampleFormat)
 
@@ -213,6 +215,15 @@ def play_stream_v2(track):
         urllib.request.urlretrieve(track_url, "in")
     except (HTTPError, TimeoutExpired, IOError):
         return
+
+    if track.quality == tidalapi.models.Quality.hi_res:
+        print("Decoding MQA")
+        command = split(mqadec)
+        try:
+            run(command, check=True, stdin=PIPE, stdout=PIPE)
+        except (CalledProcessError, TimeoutExpired):
+            pass
+        sox_48.replace('in','in.wav')
 
     command = split(sox_48)
     try:
