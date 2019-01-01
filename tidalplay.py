@@ -55,7 +55,10 @@ Sources = {"Dell XPS 13 (9343)":
                   SampleFormat="S32_LE", VolumeControl="Master"),
            "Apple USB-C to 3.5mm Headphone Adapter":
            Source(Vout=1.039, Rl=0.9, SampleRate=48,
-                  SampleFormat="S24_3LE", VolumeControl="PCM")
+                  SampleFormat="S24_3LE", VolumeControl="PCM"),
+           "Onkyo A-9010 (TOSLINK)":
+           Source(Vout=1.0, Rl=0.09, SampleRate=48,
+                  SampleFormat="S32_LE", VolumeControl="Software")
            }
 
 Sinks = {"AKG K702":
@@ -63,7 +66,9 @@ Sinks = {"AKG K702":
          "Sennheiser HD4.30":
          Sink(R=23.0, Sensitivity=116.0),
          "AKG K514":
-         Sink(R=34.4, Sensitivity=116.9)
+         Sink(R=34.4, Sensitivity=116.9),
+         "Triangle Plaisir Kari":
+         Sink(R=6, Sensitivity=97.0)
          }
 
 
