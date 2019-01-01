@@ -111,7 +111,7 @@ target_SPL_relative = target_SPL - SPL_max  # relative target loudness, db
 
 ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i temp.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
 
-sox_48 = "sox in -t wav -e float -b 32 temp.wav gain -n %+.2g rate -a -Q 7 -d 33 -c 4096 -p 45 -t -b 95 %dk gain -n %+.2g" % (
+sox_48 = "sox in -t wav -e float -b 32 temp.wav gain -n %+.2g rate -a -R 198 -c 4096 -p 45 -t -b 95 %dk gain -n %+.2g" % (
     OVERLOAD_PROTECTION, MySource.SampleRate, PCM_loudness_headroom)
 
 volume = "amixer -c %d -- sset %s playback %ddb"
