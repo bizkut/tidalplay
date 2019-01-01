@@ -17,17 +17,15 @@ import json
 import re
 import urllib
 
-def patch__str__(self):
-    return self.name
-setattr(tidalapi.models.Model, '__str__', patch__str__)
 
 class Source:
-    Vout = 0.0 # V
-    Rl = 0.0 # Ohm
-    SampleRate = int(0) # kHz
+    Vout = 0.0  # V
+    Rl = 0.0  # Ohm
+    SampleRate = int(0)  # kHz
     SampleBits = int(0)
-    SampleFormat = "" # ALSA Format String
+    SampleFormat = ""  # ALSA Format String
     VolumeControl = ""
+
     def __init__(self, Vout, Rl, SampleRate, SampleFormat, VolumeControl):
         self.Vout = Vout
         self.Rl = Rl
@@ -36,32 +34,37 @@ class Source:
         self.VolumeControl = VolumeControl
         self.SampleBits = int(re.findall('^S(\d+)_*?', SampleFormat)[0])
 
+
 class Sink:
-    R = 0.0 # Ohm 
-    Sensitivity = 0.0 # db / V
+    R = 0.0  # Ohm
+    Sensitivity = 0.0  # db / V
 
     def __init__(self, R, Sensitivity):
         self.R = R
         self.Sensitivity = Sensitivity
 
 
-Sources = {"Dell XPS 13 (9343)": 
-            Source(Vout=1.052, Rl=9.7, SampleRate=48, SampleFormat="S32_LE", VolumeControl="PCM"),
-            "Sabaj DA3":
-            Source(Vout=1.98, Rl=3.6, SampleRate=192, SampleFormat="S32_LE", VolumeControl="PCM"),
-            "Dell XPS 15 (L502x)":
-            Source(Vout=1.052, Rl=1.0, SampleRate=192, SampleFormat="S32_LE", VolumeControl="Master"),
-            "Apple USB-C to 3.5mm Headphone Adapter":
-            Source(Vout=1.039, Rl=0.9, SampleRate=48, SampleFormat="S24_3LE", VolumeControl="PCM")
-            }
+Sources = {"Dell XPS 13 (9343)":
+           Source(Vout=1.052, Rl=9.7, SampleRate=48,
+                  SampleFormat="S32_LE", VolumeControl="PCM"),
+           "Sabaj DA3":
+           Source(Vout=1.98, Rl=3.6, SampleRate=192,
+                  SampleFormat="S32_LE", VolumeControl="PCM"),
+           "Dell XPS 15 (L502x)":
+           Source(Vout=1.052, Rl=1.0, SampleRate=192,
+                  SampleFormat="S32_LE", VolumeControl="Master"),
+           "Apple USB-C to 3.5mm Headphone Adapter":
+           Source(Vout=1.039, Rl=0.9, SampleRate=48,
+                  SampleFormat="S24_3LE", VolumeControl="PCM")
+           }
 
 Sinks = {"AKG K702":
-            Sink(R=67.0, Sensitivity=100.0),
+         Sink(R=67.0, Sensitivity=100.0),
          "Sennheiser HD4.30":
-            Sink(R=23.0, Sensitivity=116.0),
+         Sink(R=23.0, Sensitivity=116.0),
          "AKG K514":
-            Sink(R=34.4, Sensitivity=116.9)
-        }
+         Sink(R=34.4, Sensitivity=116.9)
+         }
 
 
 CARD = int(1)
@@ -91,24 +94,26 @@ Vout = MySource.Vout
 RL = MySource.Rl
 
 OVERLOAD_PROTECTION = -8.0  # Intersample overload protection headroom, db
-PCM_loudness_headroom = -4.0 # PCM loudness headroom, db
-target_SPL = 75 # target integrated loudness, db
+PCM_loudness_headroom = -4.0  # PCM loudness headroom, db
+target_SPL = 75  # target integrated loudness, db
 
 Rtot = RL + RH
-VL = Vout * (RH / Rtot) # output voltage, when loaded, V
-SPL_max = headphones_sensitivity + 20. * np.log10(VL) # maximum loudness of the headphone at 0 db gain, db
+VL = Vout * (RH / Rtot)  # output voltage, when loaded, V
+# maximum loudness of the headphone at 0 db gain, db
+SPL_max = headphones_sensitivity + 20. * np.log10(VL)
 
-target_SPL_relative = target_SPL - SPL_max # relative target loudness, db
+target_SPL_relative = target_SPL - SPL_max  # relative target loudness, db
 
 ffmpeg_loudnorm_pass1 = "ffmpeg -y -hide_banner -i temp.wav -af loudnorm=I=-24:LRA=14:TP=-4:print_format=json -f null /dev/null"
 
 sox_48 = "sox in -t wav -e float -b 32 temp.wav gain -n %+.2g rate -a -Q 7 -d 33 -c 4096 -p 45 -t -b 95 %dk gain -n %+.2g" % (
-            OVERLOAD_PROTECTION, MySource.SampleRate, PCM_loudness_headroom)
+    OVERLOAD_PROTECTION, MySource.SampleRate, PCM_loudness_headroom)
 
 volume = "amixer -c %d -- sset %s playback %ddb"
 softvolume = "sox temp.wav -t wav -b %d final.wav gain %+.2g"
 
-aplay = "pasuspender -- aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (AUDIODEV, MySource.SampleFormat)
+aplay = "pasuspender -- aplay -q -D %s -f %s --disable-resample --disable-channels --disable-channels --disable-softvol final.wav" % (
+    AUDIODEV, MySource.SampleFormat)
 
 session = tidalapi.Session()
 
@@ -172,10 +177,12 @@ def get_artist_radio_tracks(artist, tracks):
     for track in session.get_artist_radio(artist_id):
         tracks.append(track)
 
+
 def get_track_radio_tracks(track, tracks):
     track_id = track
     for track in session.get_track_radio(track_id):
         tracks.append(track)
+
 
 def get_top_tracks(artist, tracks):
     if type(artist) is tidalapi.Artist:
@@ -186,13 +193,13 @@ def get_top_tracks(artist, tracks):
     for track in session.get_artist_top_tracks(artist_id):
         tracks.append(track)
 
+
 def play_stream_v2(track):
     try:
         track_url = session.get_media_url(track.id)
     except HTTPError:
         return
-    print(track_url)
-    
+
     track_str = " \t" + track.artist.name + " / " + \
                 track.album.name + " / " + track.name
     print(colorize("▶", ansi=46), track_str, end='\t')
@@ -215,7 +222,8 @@ def play_stream_v2(track):
 
     command = split(ffmpeg_loudnorm_pass1)
     try:
-        p_loudnorm = run(command, check=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        p_loudnorm = run(command, check=True, stdin=PIPE,
+                         stdout=PIPE, stderr=STDOUT)
     except (CalledProcessError, TimeoutExpired):
         pass
 
@@ -228,7 +236,8 @@ def play_stream_v2(track):
     if gain > 0.:
         gain = 0.
 
-    print("Loundess: %.3g db\tDynamic range: %.3g db\tGain: %.3g" % (float(loudnorm['input_i']), float(loudnorm['input_lra']), gain), end='\n')
+    print("Loundess: %.3g db\tDynamic range: %.3g db\tGain: %.3g" % (
+        float(loudnorm['input_i']), float(loudnorm['input_lra']), gain), end='\n')
 
     if MySource.VolumeControl != "Software":
         command = split(volume % (CARD, MySource.VolumeControl, int(gain)))
@@ -237,13 +246,12 @@ def play_stream_v2(track):
         except (CalledProcessError, TimeoutExpired):
             pass
         gain = int(0)
-    
+
     command = split(softvolume % (MySource.SampleBits, gain))
     try:
         run(command, check=True, stdin=PIPE, stdout=PIPE)
     except (CalledProcessError, TimeoutExpired):
         pass
-
 
     command = split(aplay)
     try:
@@ -253,6 +261,7 @@ def play_stream_v2(track):
 
     # print(track_str)
     return
+
 
 def get_tracks(id=""):
     tracks = []
@@ -272,6 +281,7 @@ def get_tracks(id=""):
         get_track_radio_tracks(id, tracks)
     return tracks
 
+
 if __name__ == '__main__':
 
     if argv.__len__() > 1:
@@ -289,4 +299,3 @@ if __name__ == '__main__':
             i = np.random.choice(tracks.__len__(), 1, replace=False)
             ts = get_tracks()
             play_stream_v2(ts[i[0]])
-
