@@ -115,7 +115,7 @@ sox_48 = "sox in -t wav -e float -b 32 temp.wav gain -n %+.2g rate -a -R 198 -c 
     OVERLOAD_PROTECTION, MySource.SampleRate, PCM_loudness_headroom)
 
 volume = "amixer -c %d -- sset %s playback %ddb"
-softvolume = "sox temp.wav -t wav -b %d final.wav gain %+.2g"
+softvolume = "sox temp.wav -t wav -e signed-integer -b %d final.wav gain %+.2g"
 
 HASMQA = (which('mqadec') is not None) and (which('mqarender') is not None)
 if HASMQA is True:
