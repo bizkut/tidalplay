@@ -23,7 +23,7 @@ import logging
 import requests
 import random
 from collections import namedtuple
-from .models import Artist, Album, Track, Playlist, SearchResult, Category
+from .models import Quality, Artist, Album, Track, Playlist, SearchResult, Category
 try:
     from urlparse import urljoin
 except ImportError:
@@ -33,13 +33,6 @@ except ImportError:
 log = logging.getLogger(__name__)
 
 Api = namedtuple('API', ['location', 'token'])
-
-
-class Quality(object):
-    lossless = 'LOSSLESS'
-    high = 'HIGH'
-    low = 'LOW'
-
 
 class Config(object):
 
@@ -284,6 +277,9 @@ def _parse_track(json_obj):
         'artist': artist,
         'album': album,
         'available': bool(json_obj['streamReady']),
+        'quality': json_obj['audioQuality'],
+        'replaygain': json_obj['replayGain'],
+        'peak': json_obj['peak']
     }
     return Track(**kwargs)
 

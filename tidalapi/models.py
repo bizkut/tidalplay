@@ -21,6 +21,12 @@ from __future__ import unicode_literals
 IMG_URL = "http://images.osl.wimpmusic.com/im/im?w={width}&h={height}&{id_type}={id}"
 
 
+class Quality(object):
+    hi_res = 'HI_RES'
+    lossless = 'LOSSLESS'
+    high = 'HIGH'
+    low = 'LOW'
+    
 class Model(object):
     id = None
     name = None
@@ -70,6 +76,9 @@ class Track(Model):
     artist = None
     album = None
     available = True
+    quality = Quality.lossless
+    replaygain = 0.0
+    peak = 0.0
 
 
 class SearchResult(Model):
